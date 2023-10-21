@@ -51,8 +51,11 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 #include "utils/tqual.h"
+#include "./import_stats.c"
 
 #include "pg_yb_utils.h"
+
+
 
 /*
  * GUC parameters
@@ -78,6 +81,7 @@ static void vac_truncate_clog(TransactionId frozenXID,
 static bool vacuum_rel(Oid relid, RangeVar *relation, int options,
 		   VacuumParams *params);
 
+extern void free_exp_stat_resources();
 /*
  * Primary entry point for manual VACUUM and ANALYZE commands
  *
@@ -371,9 +375,12 @@ vacuum(int options, List *relations, VacuumParams *params,
 					/* functions in indexes may want a snapshot set */
 					PushActiveSnapshot(GetTransactionSnapshot());
 				}
-
-				analyze_rel(vrel->oid, vrel->relation, options, params,
-							vrel->va_cols, in_outer_xact, vac_strategy);
+				if(!yb_enable_statistics_copy)
+					analyze_rel(vrel->oid, vrel->relation, options, params,
+								vrel->va_cols, in_outer_xact, vac_strategy);
+				else
+					analyze_rel_experimental(vrel->oid, vrel->relation, options, params,
+								vrel->va_cols, in_outer_xact, vac_strategy);
 
 				if (use_own_xacts)
 				{
@@ -382,11 +389,13 @@ vacuum(int options, List *relations, VacuumParams *params,
 				}
 			}
 		}
+		free_exp_stat_resources();
 	}
 	PG_CATCH();
 	{
 		in_vacuum = false;
 		VacuumCostActive = false;
+		free_exp_stat_resources();
 		PG_RE_THROW();
 	}
 	PG_END_TRY();
@@ -887,6 +896,7 @@ vac_update_relstats(Relation relation,
 					bool in_outer_xact)
 {
 	Oid			relid = RelationGetRelid(relation);
+	
 	Relation	rd;
 	HeapTuple	ctup;
 	Form_pg_class pgcform;

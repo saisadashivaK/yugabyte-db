@@ -194,7 +194,13 @@ extern void lazy_vacuum_rel(Relation onerel, int options,
 extern void analyze_rel(Oid relid, RangeVar *relation, int options,
 			VacuumParams *params, List *va_cols, bool in_outer_xact,
 			BufferAccessStrategy bstrategy);
+extern void analyze_rel_experimental(Oid relid, RangeVar *relation, int options,
+			VacuumParams *params, List *va_cols, bool in_outer_xact,
+			BufferAccessStrategy bstrategy);
 extern bool std_typanalyze(VacAttrStats *stats);
+extern bool std_typanalyze_experimental(VacAttrStats *stats);
+extern void compute_array_stats_experimental(VacAttrStats *stats,
+								AnalyzeAttrFetchFunc fetchfunc, int samplerows, double totalrows);
 
 /* in utils/misc/sampling.c --- duplicate of declarations in utils/sampling.h */
 extern double anl_random_fract(void);

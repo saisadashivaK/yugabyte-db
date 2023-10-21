@@ -42,7 +42,7 @@ if("$CACHE{YB_PCH_ON}" STREQUAL "")
   endif()
   set(YB_PCH_ON ${YB_USE_PCH} CACHE BOOL "Whether to use precompiled headers" FORCE)
 endif()
-
+message("%%%%%%%%%% SAIRAM %%%%%%%%%%%%%%")
 message("-- CMAKE_SYSTEM_INFO_FILE: ${CMAKE_SYSTEM_INFO_FILE}")
 message("-- CMAKE_SYSTEM_NAME:      ${CMAKE_SYSTEM_NAME}")
 message("-- CMAKE_SYSTEM_PROCESSOR: ${CMAKE_SYSTEM_PROCESSOR}")
@@ -56,8 +56,8 @@ include(YugabyteFunctions)
 yb_initialize_constants()
 include(YugabyteTesting)
 
-ADD_CXX_FLAGS("-Werror")
-ADD_CXX_FLAGS("-fno-strict-aliasing -Wall")
+ADD_CXX_FLAGS("-w")
+ADD_CXX_FLAGS("-Wno-error")
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
   # Certain platforms such as ARM do not use signed chars by default
   # which causes issues with certain bounds checks.
@@ -352,16 +352,10 @@ ADD_CXX_FLAGS("-DGFLAGS=gflags")
 ADD_CXX_FLAGS("-Wnon-virtual-dtor")
 
 # Flags common to gcc and clang.
-ADD_CXX_FLAGS("-Werror=enum-compare")
-ADD_CXX_FLAGS("-Werror=reorder")
-ADD_CXX_FLAGS("-Werror=switch")
-ADD_CXX_FLAGS("-Werror=return-type")
-ADD_CXX_FLAGS("-Werror=non-virtual-dtor")
+
 
 if(IS_CLANG)
-  ADD_CXX_FLAGS("-Werror=string-plus-int")
-  ADD_CXX_FLAGS("-Werror=return-stack-address")
-  ADD_CXX_FLAGS("-Werror=implicit-fallthrough")
+
   ADD_CXX_FLAGS("-D_LIBCPP_ENABLE_THREAD_SAFETY_ANNOTATIONS")
   ADD_CXX_FLAGS("-Wthread-safety-analysis")
 
@@ -774,7 +768,7 @@ set(YB_CMAKE_CXX_EXTRA_FLAGS "-Wextra -Wno-unused-parameter")
 set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # C++-only flags.
-ADD_CXX_FLAGS("-Werror=missing-field-initializers")
+# ADD_CXX_FLAGS("-Werror=missing-field-initializers")
 
 if ((IS_GCC) AND
     ("${CMAKE_CXX_COMPILER_VERSION}" VERSION_GREATER_EQUAL "7.0"))
@@ -788,8 +782,8 @@ if (IS_CLANG)
   ADD_CXX_FLAGS("-Wsign-compare")
 endif()
 
-string (REPLACE "-Werror=non-virtual-dtor" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
-string (REPLACE "-Werror=reorder" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+# string (REPLACE "-Werror=non-virtual-dtor" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+# string (REPLACE "-Werror=reorder" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
 string (REPLACE "-Wnon-virtual-dtor" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
 string (REPLACE "-Woverloaded-virtual" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
 

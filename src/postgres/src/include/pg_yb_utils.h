@@ -443,6 +443,13 @@ extern bool yb_enable_distinct_pushdown;
  */
 extern bool yb_enable_optimizer_statistics;
 
+
+/*
+	enables copy of statistics from file
+*/
+
+extern bool yb_enable_statistics_copy;
+
 /*
  * If true then condition rechecking is bypassed at YSQL if the condition is
  * bound to DocDB.

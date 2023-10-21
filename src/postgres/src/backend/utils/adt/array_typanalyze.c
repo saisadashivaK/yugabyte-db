@@ -22,7 +22,7 @@
 #include "utils/datum.h"
 #include "utils/lsyscache.h"
 #include "utils/typcache.h"
-
+#include "pg_yb_utils.h"
 
 /*
  * To avoid consuming too much memory, IO and CPU load during analysis, and/or
@@ -106,8 +106,16 @@ array_typanalyze(PG_FUNCTION_ARGS)
 	 * Call the standard typanalyze function.  It may fail to find needed
 	 * operators, in which case we also can't do anything, so just fail.
 	 */
-	if (!std_typanalyze(stats))
-		PG_RETURN_BOOL(false);
+	if(yb_enable_statistics_copy){
+		if (!std_typanalyze_experimental(stats))
+			PG_RETURN_BOOL(false);
+
+	}else{
+		if (!std_typanalyze(stats))
+			PG_RETURN_BOOL(false);
+
+
+	}
 
 	/*
 	 * Check attribute data type is a varlena array (or a domain over one).
@@ -146,7 +154,10 @@ array_typanalyze(PG_FUNCTION_ARGS)
 	extra_data->std_extra_data = stats->extra_data;
 
 	/* ... and replace with our info */
-	stats->compute_stats = compute_array_stats;
+	if(yb_enable_statistics_copy)
+		stats->compute_stats = compute_array_stats_experimental;
+	else
+		stats->compute_stats = compute_array_stats;
 	stats->extra_data = extra_data;
 
 	/*
