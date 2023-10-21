@@ -1301,6 +1301,7 @@ typedef struct YbSeqScanState
 {
 	ScanState	ss;				/* its first field is NodeTag */
 	// TODO handle;				/* size of parallel heap scan descriptor */
+	List	   *aggrefs;		/* aggregate pushdown information */
 } YbSeqScanState;
 
 /* ----------------
@@ -1367,6 +1368,11 @@ typedef struct
  *		OrderByTypByVals   is the datatype of order by expression pass-by-value?
  *		OrderByTypLens	   typlens of the datatypes of order by expressions
  *		pscan_len		   size of parallel index scan descriptor
+ *
+ *	YB specific attributes
+ *		might_recheck	   true if the scan might recheck indexquals (currently
+ *						   only used for aggregate pushdown purposes)
+ *		aggrefs			   aggregate pushdown information
  * ----------------
  */
 typedef struct IndexScanState
@@ -1394,6 +1400,10 @@ typedef struct IndexScanState
 	bool	   *iss_OrderByTypByVals;
 	int16	   *iss_OrderByTypLens;
 	Size		iss_PscanLen;
+
+	/* YB specific attributes. */
+	bool		yb_iss_might_recheck;
+	List	   *yb_iss_aggrefs;
 } IndexScanState;
 
 /* ----------------
@@ -1414,6 +1424,8 @@ typedef struct IndexScanState
  *		ioss_PscanLen	   Size of parallel index-only scan descriptor
  *
  *	YB specific attributes
+ *		might_recheck	   true if the scan might recheck indexquals (currently
+ *						   only used for aggregate pushdown purposes)
  *		aggrefs			   aggregate pushdown information
  * ----------------
  */
@@ -1435,6 +1447,7 @@ typedef struct IndexOnlyScanState
 	Size		ioss_PscanLen;
 
 	/* YB specific attributes. */
+	bool		yb_ioss_might_recheck;
 	List	   *yb_ioss_aggrefs;
 	/*
 	 * yb_indexqual_for_recheck is the modified version of indexqual.

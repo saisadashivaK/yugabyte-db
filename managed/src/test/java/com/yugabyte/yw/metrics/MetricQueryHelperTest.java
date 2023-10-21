@@ -9,23 +9,14 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.AllOf.allOf;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.Config;
-import com.yugabyte.yw.common.AssertHelper;
-import com.yugabyte.yw.common.FakeDBApplication;
-import com.yugabyte.yw.common.PlatformExecutorFactory;
-import com.yugabyte.yw.common.PlatformServiceException;
-import com.yugabyte.yw.common.TestUtils;
+import com.yugabyte.yw.common.*;
 import com.yugabyte.yw.common.config.GlobalConfKeys;
 import com.yugabyte.yw.common.config.RuntimeConfGetter;
 import com.yugabyte.yw.metrics.data.AlertData;
@@ -35,11 +26,7 @@ import com.yugabyte.yw.models.MetricConfigDefinition;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.hamcrest.CoreMatchers;
@@ -66,6 +53,8 @@ public class MetricQueryHelperTest extends FakeDBApplication {
 
   @Mock RuntimeConfGetter runtimeConfGetter;
 
+  @Mock WSClientRefresher wsClientRefresher;
+
   MetricConfigDefinition validMetric;
 
   @Before
@@ -80,13 +69,23 @@ public class MetricQueryHelperTest extends FakeDBApplication {
     when(mockPlatformExecutorFactory.createFixedExecutor(any(), anyInt(), any()))
         .thenReturn(executor);
     when(runtimeConfGetter.getStaticConf()).thenReturn(mockAppConfig);
+    when(runtimeConfGetter.getGlobalConf(GlobalConfKeys.metricsAuth)).thenReturn(false);
     when(runtimeConfGetter.getGlobalConf(GlobalConfKeys.metricsLinkUseBrowserFqdn))
         .thenReturn(true);
 
     MetricUrlProvider metricUrlProvider = new MetricUrlProvider(runtimeConfGetter);
     metricQueryHelper =
         new MetricQueryHelper(
-            mockAppConfig, mockApiHelper, metricUrlProvider, mockPlatformExecutorFactory);
+            mockAppConfig,
+            runtimeConfGetter,
+            wsClientRefresher,
+            metricUrlProvider,
+            mockPlatformExecutorFactory) {
+          @Override
+          protected ApiHelper getApiHelper() {
+            return mockApiHelper;
+          }
+        };
   }
 
   @Test
@@ -118,14 +117,13 @@ public class MetricQueryHelperTest extends FakeDBApplication {
     HashMap<String, String> params = new HashMap<>();
     long startTimestamp = 1646925800;
     params.put("start", String.valueOf(startTimestamp));
-    params.put("end", String.valueOf(startTimestamp - STEP_SIZE + 1));
+    params.put("end", String.valueOf(startTimestamp - 1));
 
     try {
       metricQueryHelper.query(ImmutableList.of("valid_metric"), params);
     } catch (PlatformServiceException re) {
       AssertHelper.assertBadRequest(
-          re.buildResult(fakeRequest),
-          "Should be at least " + STEP_SIZE + " seconds between start and end time");
+          re.buildResult(fakeRequest), "Queried time interval should be positive");
     }
   }
 
@@ -358,13 +356,13 @@ public class MetricQueryHelperTest extends FakeDBApplication {
       assertTrue(metricKeys.contains(capturedQueryParam.get("queryKey")));
       assertThat(
           Integer.parseInt(capturedQueryParam.get("start").toString()),
-          allOf(notNullValue(), equalTo(1481147528)));
+          allOf(notNullValue(), equalTo(1481147526)));
       assertThat(
           Integer.parseInt(capturedQueryParam.get("step").toString()),
-          allOf(notNullValue(), equalTo(2)));
+          allOf(notNullValue(), equalTo(3)));
       assertThat(
           Integer.parseInt(capturedQueryParam.get("end").toString()),
-          allOf(notNullValue(), equalTo(1481147648)));
+          allOf(notNullValue(), equalTo(1481147646)));
     }
   }
 
@@ -374,9 +372,9 @@ public class MetricQueryHelperTest extends FakeDBApplication {
 
     ArgumentCaptor<String> queryUrl = ArgumentCaptor.forClass(String.class);
 
-    when(mockApiHelper.getRequest(anyString())).thenReturn(responseJson);
+    when(mockApiHelper.getRequest(anyString(), any())).thenReturn(responseJson);
     List<AlertData> alerts = metricQueryHelper.queryAlerts();
-    verify(mockApiHelper).getRequest(queryUrl.capture());
+    verify(mockApiHelper).getRequest(queryUrl.capture(), any());
 
     assertThat(queryUrl.getValue(), allOf(notNullValue(), equalTo("foo://bar/api/v1/alerts")));
 
@@ -403,13 +401,13 @@ public class MetricQueryHelperTest extends FakeDBApplication {
 
     ArgumentCaptor<String> queryUrl = ArgumentCaptor.forClass(String.class);
 
-    when(mockApiHelper.getRequest(anyString())).thenReturn(responseJson);
+    when(mockApiHelper.getRequest(anyString(), any())).thenReturn(responseJson);
     try {
       metricQueryHelper.queryAlerts();
     } catch (Exception e) {
       assertThat(e, CoreMatchers.instanceOf(RuntimeException.class));
     }
-    verify(mockApiHelper).getRequest(queryUrl.capture());
+    verify(mockApiHelper).getRequest(queryUrl.capture(), any());
 
     assertThat(queryUrl.getValue(), allOf(notNullValue(), equalTo("foo://bar/api/v1/alerts")));
   }

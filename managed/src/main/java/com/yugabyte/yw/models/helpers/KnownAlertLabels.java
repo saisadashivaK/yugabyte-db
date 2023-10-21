@@ -45,7 +45,11 @@ public enum KnownAlertLabels {
   NAMESPACE,
   POD_NAME,
   CONTAINER_NAME,
-  PARENT_TASK_TYPE;
+  NODE_ADDRESS,
+  NODE_IDENTIFIER,
+  PARENT_TASK_TYPE,
+
+  YBA_VERSION;
 
   public String labelName() {
     return name().toLowerCase();
